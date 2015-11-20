@@ -13,9 +13,6 @@ import org.influxdb.InfluxDB;
 import org.influxdb.dto.BatchPoints;
 import org.influxdb.dto.Point;
 
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Maps;
-
 /**
  * A BatchProcessor can be attached to a InfluxDB Instance to collect single point writes and
  * aggregates them to BatchPoints to get a better write performance.
@@ -82,9 +79,9 @@ public class BatchProcessor {
 		 * @return the BatchProcessor instance.
 		 */
 		public BatchProcessor build() {
-			Preconditions.checkNotNull(this.actions, "actions may not be null");
-			Preconditions.checkNotNull(this.flushInterval, "flushInterval may not be null");
-			Preconditions.checkNotNull(this.flushIntervalUnit, "flushIntervalUnit may not be null");
+			Objects.requireNonNull(this.actions, "actions may not be null");
+			Objects.requireNonNull(this.flushInterval, "flushInterval may not be null");
+			Objects.requireNonNull(this.flushIntervalUnit, "flushIntervalUnit may not be null");
 			return new BatchProcessor(this.influxDB, this.actions, this.flushIntervalUnit, this.flushInterval);
 		}
 	}
@@ -148,7 +145,7 @@ public class BatchProcessor {
 			return;
 		}
 
-		Map<String, BatchPoints> databaseToBatchPoints = Maps.newHashMap();
+		Map<String, BatchPoints> databaseToBatchPoints = new HashMap<>();
 		List<BatchEntry> batchEntries = new ArrayList<>(this.queue.size());
 		this.queue.drainTo(batchEntries);
 

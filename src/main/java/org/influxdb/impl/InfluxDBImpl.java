@@ -1,5 +1,6 @@
 package org.influxdb.impl;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -20,9 +21,6 @@ import retrofit.client.OkClient;
 import retrofit.client.Response;
 import retrofit.mime.TypedString;
 
-import com.google.common.base.Preconditions;
-import com.google.common.base.Stopwatch;
-import com.google.common.collect.Lists;
 import com.squareup.okhttp.OkHttpClient;
 
 /**
@@ -115,7 +113,7 @@ public class InfluxDBImpl implements InfluxDB {
 
 	@Override
 	public Pong ping() {
-		Stopwatch watch = Stopwatch.createStarted();
+		long start = System.currentTimeMillis();
 		Response response = this.influxDBService.ping();
 		List<Header> headers = response.getHeaders();
 		String version = "unknown";
@@ -126,7 +124,7 @@ public class InfluxDBImpl implements InfluxDB {
 		}
 		Pong pong = new Pong();
 		pong.setVersion(version);
-		pong.setResponseTime(watch.elapsed(TimeUnit.MILLISECONDS));
+		pong.setResponseTime(System.currentTimeMillis() - start);
 		return pong;
 	}
 
@@ -189,7 +187,9 @@ public class InfluxDBImpl implements InfluxDB {
 	 */
 	@Override
 	public void createDatabase(final String name) {
-		Preconditions.checkArgument(!name.contains("-"), "Databasename cant contain -");
+		if (name.contains("-")) {
+			throw new IllegalArgumentException("Database name must not contain '-'");
+		}
 		this.influxDBService.query(this.username, this.password, "CREATE DATABASE IF NOT EXISTS " + name);
 	}
 
@@ -210,7 +210,7 @@ public class InfluxDBImpl implements InfluxDB {
 		// {"results":[{"series":[{"name":"databases","columns":["name"],"values":[["mydb"]]}]}]}
 		// Series [name=databases, columns=[name], values=[[mydb], [unittest_1433605300968]]]
 		List<List<Object>> databaseNames = result.getResults().get(0).getSeries().get(0).getValues();
-		List<String> databases = Lists.newArrayList();
+		List<String> databases = new ArrayList<>();
 		if(databaseNames != null) {
 			for (List<Object> database : databaseNames) {
 				databases.add(database.get(0).toString());

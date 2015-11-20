@@ -1,6 +1,6 @@
 package org.influxdb.dto;
 
-import com.google.common.base.MoreObjects;
+import java.util.Objects;
 
 /**
  * Representation of the response for a influxdb ping.
@@ -42,16 +42,15 @@ public class Pong {
 		this.responseTime = responseTime;
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public String toString() {
-		return MoreObjects
-				.toStringHelper(this.getClass())
-				.add("version", this.version)
-				.add("responseTime", this.responseTime)
-				.toString();
-	}
-
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder("Pong [");
+        sb.append("version='").append(version).append('\'');
+        sb.append(", responseTime=").append(responseTime);
+        sb.append(']');
+        return sb.toString();
+    }
 }

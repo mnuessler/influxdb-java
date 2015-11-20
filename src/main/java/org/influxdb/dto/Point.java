@@ -1,18 +1,14 @@
 package org.influxdb.dto;
 
+import java.io.StringWriter;
 import java.math.BigInteger;
 import java.text.NumberFormat;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
+import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
-
-import com.google.common.base.Preconditions;
-import com.google.common.base.Strings;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Ordering;
-import com.google.common.escape.Escaper;
-import com.google.common.escape.Escapers;
 
 /**
  * Representation of a InfluxDB database Point.
@@ -28,9 +24,6 @@ public class Point {
 	private Map<String, Object> fields;
 
 	private boolean useInteger = false;
-
-	private static final Escaper FIELD_ESCAPER = Escapers.builder().addEscape('"', "\\\"").build();
-	private static final Escaper KEY_ESCAPER = Escapers.builder().addEscape(' ', "\\ ").addEscape(',', "\\,").addEscape('=', "\\=").build();
 
 	Point() {
 	}
@@ -55,10 +48,10 @@ public class Point {
 	 */
 	public static final class Builder {
 		private final String measurement;
-		private final Map<String, String> tags = Maps.newTreeMap(Ordering.natural());
+		private final Map<String, String> tags = new TreeMap<>();
 		private Long time;
 		private TimeUnit precision = TimeUnit.NANOSECONDS;
-		private final Map<String, Object> fields = Maps.newTreeMap(Ordering.natural());
+		private final Map<String, Object> fields = new TreeMap<>();
 		private boolean useInteger = false;
 		/**
 		 * @param measurement
@@ -139,7 +132,7 @@ public class Point {
 		 * @return the Builder instance.
 		 */
 		public Builder time(final long timeToSet, final TimeUnit precisionToSet) {
-		    Preconditions.checkNotNull(precisionToSet, "Precision must be not null!");
+			Objects.requireNonNull(precisionToSet, "Precision must be not null!");
 			this.time = timeToSet;
 			this.precision = precisionToSet;
 			return this;
@@ -151,9 +144,12 @@ public class Point {
 		 * @return the newly created Point.
 		 */
 		public Point build() {
-			Preconditions
-					.checkArgument(!Strings.isNullOrEmpty(this.measurement), "Point name must not be null or empty.");
-			Preconditions.checkArgument(this.fields.size() > 0, "Point must have at least one field specified.");
+			if (this.measurement == null || this.measurement.isEmpty()) {
+				throw new IllegalArgumentException("Point name must not be null or empty.");
+			}
+			if (this.fields.isEmpty()) {
+				throw new IllegalArgumentException("Point must have at least one field specified.");
+			}
 			Point point = new Point();
 			point.setUseInteger(this.useInteger);
 			point.setFields(this.fields);
@@ -258,7 +254,7 @@ public class Point {
 	 */
 	public String lineProtocol() {
 		final StringBuilder sb = new StringBuilder();
-		sb.append(KEY_ESCAPER.escape(this.measurement));
+		sb.append(escapeKey(this.measurement));
 		sb.append(concatenatedTags());
 		sb.append(concatenateFields());
 		sb.append(formatedTime());
@@ -269,7 +265,7 @@ public class Point {
 		final StringBuilder sb = new StringBuilder();
 		for (Entry<String, String> tag : this.tags.entrySet()) {
 			sb.append(",");
-			sb.append(KEY_ESCAPER.escape(tag.getKey())).append("=").append(KEY_ESCAPER.escape(tag.getValue()));
+			sb.append(escapeKey(tag.getKey())).append("=").append(escapeKey(tag.getValue()));
 		}
 		sb.append(" ");
 		return sb;
@@ -286,12 +282,12 @@ public class Point {
 		numberFormat.setMinimumFractionDigits(1);
 
 		for (Entry<String, Object> field : this.fields.entrySet()) {
-			sb.append(KEY_ESCAPER.escape(field.getKey())).append("=");
+			sb.append(escapeKey(field.getKey())).append("=");
 			loops++;
 			Object value = field.getValue();
 			if (value instanceof String) {
 				String stringValue = (String) value;
-				sb.append("\"").append(FIELD_ESCAPER.escape(stringValue)).append("\"");
+				sb.append("\"").append(escapeField(stringValue)).append("\"");
 			} else if(useInteger && (value instanceof Integer || value instanceof BigInteger || value instanceof Long)) {
 				sb.append(value).append("i");
 			} else if (value instanceof Number) {
@@ -315,5 +311,29 @@ public class Point {
 		sb.append(" ").append(TimeUnit.NANOSECONDS.convert(this.time, this.precision));
 		return sb;
 	}
+
+    private static String escapeField(String s) {
+        StringWriter writer = new StringWriter(s.length());
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '"') {
+                writer.append('\\');
+            }
+            writer.append(c);
+        }
+        return writer.toString();
+    }
+
+    private static String escapeKey(String s) {
+        StringWriter writer = new StringWriter(s.length());
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == ' ' || c == ',' || c == '=') {
+                writer.append('\\');
+            }
+            writer.append(c);
+        }
+        return writer.toString();
+    }
 
 }
